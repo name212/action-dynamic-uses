@@ -24,7 +24,7 @@ inputs:
     default: "{}"
 outputs:
   outputs:
-    description: 'outputs` from the action in json format
+    description: 'outputs from the action in json format'+
     value: ${{ steps.run.outputs.outputs }}
 runs:
   using: composite
@@ -57,7 +57,7 @@ runs:
         }
 
         function echo_debug() {
-          local out="$(echo ${1:-} | sed ' :a;N;$!ba;s/%/%25/g' | sed ':a;N;$!ba;s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+          local out="$(echo ${1:-} | sed ':a;N;$!ba;s/%/%25/g' | sed ':a;N;$!ba;s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
           echo "::debug::${out}"
         }
 
