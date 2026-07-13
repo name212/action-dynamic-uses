@@ -1,4 +1,4 @@
-name: Test uses
+name: Pull request changes
 on:
   pull_request:
     types:
@@ -7,13 +7,14 @@ on:
       - reopened
 
 jobs:
-  ok_tests:
+  uses_tests:
     name: "Run uses test"
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
-      - name: Checkout
+      - &checkout_step
+        name: Checkout
         uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
@@ -41,3 +42,33 @@ jobs:
         env:
           RESULT: ${{ fromJSON(steps.yq_run.outputs.outputs).result }}
         run: echo "$RESULT"
+  
+  # dir_tests:
+  #   name: "Run action dir (no sub-module) test"
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 5
+
+  #   steps:
+  #     - *checkout_step
+  #     - name: as_subdir
+  #       uses: ./
+  #       with:
+  #         uses: actions/setup-go@v6.4.0
+  #         with: |
+  #           go-version: '1.26.x'
+  #     - name: Get go version
+  #       run: go version
+  #     - name: Uses second (yq docker)
+  #       uses: ./
+  #       id: yq_run
+  #       env:
+  #         REPLACE: "replaced"
+  #       with:
+  #         uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d
+  #         with: |
+  #           cmd: |
+  #             echo '{"a": "b"}' | yq -o yaml -P '.a = env(REPLACE)'
+  #     - name: Print yq result
+  #       env:
+  #         RESULT: ${{ fromJSON(steps.yq_run.outputs.outputs).result }}
+  #       run: echo "$RESULT"

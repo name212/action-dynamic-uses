@@ -7,14 +7,12 @@ description: |
   with actions/checkout@v7.0.0 action with init git sub-modules recursive.
 inputs:
   uses:
-    description: Action reference or path, e.g. `actions/setup-node@v3`. If not passed should pass `action_dir`
-    required: false
-  action_dir:
     description: |
-      Dir path to action in repo. If not passed should pass `uses`.
-      If `action_dir` in submodule path you should check action with `submodules: "recursive"`
+      Action reference or path, e.g. `actions/setup-node@v3`.
+      If has prefix `dir:` uses directory in repository.
+      If dir in submodule path you should check action with `submodules: "recursive"`
       or pass `checkout_ref`.
-    required: false
+    required: true
   checkout_ref:
     description: Git reference to checkout
     required: false
@@ -41,7 +39,6 @@ runs:
       shell: bash
       env:
         uses_str: ${{ inputs.uses }}
-        action_dir: ${{ inputs.action_dir }}
         with_input: ${{ inputs.with }}
         dest_dir: ./.tmp-dynamic-action
         ref: ${{ inputs.checkout_ref }}
@@ -62,6 +59,10 @@ runs:
           local out="$(echo ${1:-} | sed ':a;N;$!ba;s/%/%25/g' | sed ':a;N;$!ba;s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
           echo "::debug::${out}"
         }
+
+        if [ -z "$uses_str" ]; then
+          exit_with_error "inputs.uses is empty"
+        fi
 
         if ! command -v "yq" > /dev/null; then
           exit_with_error "yq is not installed. If you use self-hosted runner you should install yq"
@@ -92,12 +93,14 @@ runs:
           exit_with_error "cannot create dir $full_dest"
         fi
 
+        dir_uses_prefix="dir:"
+
         uses_to_run=""
-        if [ -n "$uses_str" ]; then
-          echo_debug "Use uses directly: '$uses_str'"
-          uses_to_run="$uses_str"
-        elif [ -n "$action_dir" ]; then
-          echo_debug "Use uses action dir: '$action_dir'"
+        
+        if [[ "$uses_str" == ${dir_uses_prefix}* ]]; then
+          echo_debug "Use uses action dir: '$uses_str'"
+
+          action_dir="${uses_str#"$dir_uses_prefix"}"
 
           if ! "$(realpath "$action_dir")"; then
             err_msg="Cannot get real path for '$action_dir'. Probably you do not checkout to ref or not pass inputs.checkout_ref (value is '$ref')"
@@ -117,7 +120,7 @@ runs:
             exit_with_error "'$action_dir' is not directory with action. '${uses_to_run}/action.yml' is not file or not found"
           fi
         else
-          exit_with_error "inputs.uses or inputs.action_dir should be passed"
+          echo_debug "Use uses directly: '$uses_str'"
         fi
 
         with_json_var=""
