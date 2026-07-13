@@ -55,10 +55,6 @@ runs:
           echo -e "\033[0;32mDynamically action: ${1:-}\033[0m"
         }
 
-        function echo_debug() {
-          echo "::debug::${1:-}"
-        }
-
         if [ -z "$uses_str" ]; then
           exit_with_error "inputs.uses is empty"
         fi
@@ -67,10 +63,10 @@ runs:
           exit_with_error "yq is not installed. If you use self-hosted runner you should install yq"
         fi
 
-        echo_debug "Use yq version"
-        echo_debug "$(yq --version)"
+        echo "::debug::Use yq version"
+        echo "::debug::$(yq --version)"
 
-        echo_debug "dest_dir: '$dest_dir'"
+        echo "::debug::dest_dir: '$dest_dir'"
 
         if [ -z "$dest_dir" ]; then
           exit_with_error "dest_dir env is empty"
@@ -86,7 +82,7 @@ runs:
           exit_with_error "cannot get abs path for $dest_dir"
         fi
 
-        echo_debug "full dest: '$full_dest'"
+        echo "::debug::full dest: '$full_dest'"
 
         if ! mkdir -p "$full_dest"; then
           exit_with_error "cannot create dir $full_dest"
@@ -97,7 +93,7 @@ runs:
         uses_to_run="$uses_str"
 
         if [[ "$uses_str" == ${dir_uses_prefix}* ]]; then
-          echo_debug "Use uses action dir: '$uses_str'"
+          echo "::debug::Use uses action dir: '$uses_str'"
 
           action_dir="${uses_str#"$dir_uses_prefix"}"
 
@@ -119,7 +115,7 @@ runs:
             exit_with_error "'$action_dir' is not directory with action. '${uses_to_run}/action.yml' is not file or not found"
           fi
         else
-          echo_debug "Use uses directly: '$uses_str'"
+          echo "::debug::Use uses directly: '$uses_to_run'"
         fi
 
         with_json_var=""
@@ -127,11 +123,11 @@ runs:
           exit_with_error "Cannot convert inputs.with to json"
         fi
 
-        export TARGET_USES="$uses_str"
+        export TARGET_USES="$uses_to_run"
         export TARGET_WITH="$with_json_var"
 
-        echo_debug "Uses to run: '$TARGET_USES'"
-        echo_debug "With JSON to run: '$TARGET_WITH'"
+        echo "::debug::Uses to run: '$TARGET_USES'"
+        echo "::debug::With JSON to run: '$TARGET_WITH'"
 
         action_file="${full_dest}/action.yml"
 
@@ -147,8 +143,8 @@ runs:
           exit_with_error "'$action_file' action file is empty"
         fi
 
-        echo_debug "Dynamic action yaml:"
-        echo_debug "$(cat "$action_file")"
+        echo "::debug::Dynamic action yaml:"
+        echo "::debug::$(cat "$action_file")"
 
         echo "DEST_DIR=$full_dest" >> $GITHUB_OUTPUT
     - name: Run
