@@ -1,0 +1,160 @@
+name: Uses another github action dynamically
+
+description: |
+  Dynamically resolve and use another GitHub action. 
+  Can resolve from sub-dir in repo (also as sub module)
+  If you pass `checkout_ref` action will checkout on this ref
+  with actions/checkout@v7.0.0 action with init git sub-modules recursive.
+inputs:
+  uses:
+    description: Action reference or path, e.g. `actions/setup-node@v3`. If not passed should pass `action_dir`
+    required: false
+  action_dir:
+    description: |
+      Dir path to action in repo. If not passed should pass `uses`.
+      If `action_dir` in submodule path you should check action with `submodules: "recursive"`
+      or pass `checkout_ref`.
+    required: false
+  checkout_ref:
+    description: Git reference to checkout
+    required: false
+  with:
+    description: 'YAML/JSON string of `inputs` for the action, e.g. `node-version: 18` or `{"node-version": "18"}`'
+    required: false
+    default: "{}"
+outputs:
+  outputs:
+    description: 'outputs` from the action in json format
+    value: ${{ steps.run.outputs.outputs }}
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      if: ${{ inputs.checkout_ref && inputs.checkout_ref != "" }}
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      with:
+        fetch-depth: 0
+        submodules: "recursive"
+        ref: ${{ inputs.checkout_ref }}
+    - name: Setup
+      id: setup
+      shell: bash
+      env:
+        uses_str: ${{ inputs.uses }}
+        action_dir: ${{ inputs.action_dir }}
+        with_input: ${{ inputs.with }}
+        dest_dir: &DEST_DIR_ANCHOR ./.tmp-dynamic-action
+        ref: ${{ inputs.checkout_ref }}
+        this_action_dir: ${{ github.action_path }}
+      run: |
+        function exit_with_error() {
+          echo -e "\033[0;31mDynamically action failed:${1:-}\033[0m"
+          exit 1
+        }
+
+        function echo_info() {
+          echo -e "\033[0;32mDynamically action: ${1:-}\033[0m"
+        }
+
+        function echo_debug() {
+          local out="$(echo ${1:-} | sed ':a;N;$!ba;s/%/%25/g' | sed ':a;N;$!ba;s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+          echo "::debug::${out}"
+        }
+
+        if ! command -v "yq" > /dev/null; then
+          exit_with_error "yq is not installed. If you use self-hosted runner you should install yq"
+        fi
+
+        echo_debug "Use yq version"
+        echo_debug "$(yq --version)"
+
+        echo_debug "dest_dir: '$dest_dir'"
+
+        if [ -z "$dest_dir" ]; then
+          exit_with_error "dest_dir env is empty"
+        fi
+
+        action_template_file="${this_action_dir}/_dyn-action-template.yml"
+        if [ ! -f "$action_template_file" ]; then
+          exit_with_error "'$action_template_file' file with action template not found"
+        fi
+
+        full_dest=""
+        if ! full_dest="$(realpath "$dest_dir")"; then
+          exit_with_error "cannot get abs path for $dest_dir"
+        fi
+
+        echo_debug "full dest: '$full_dest'"
+
+        if ! mkdir -p "$full_dest"; then
+          exit_with_error "cannot create dir $full_dest"
+        fi
+
+        uses_to_run=""
+        if [ -n "$uses_str" ]; then
+          echo_debug "Use uses directly: '$uses_str'"
+          uses_to_run="$uses_str"
+        elif [ -n "$action_dir" ]; then
+          echo_debug "Use uses action dir: '$action_dir'"
+
+          if ! "$(realpath "$action_dir")"; then
+            err_msg="Cannot get real path for '$action_dir'. Probably you do not checkout to ref or not pass inputs.checkout_ref (value is '$ref')"
+            err_msg="${err_msg} Probably you do not checkout to ref or not pass inputs.checkout_ref (value is '$ref')"
+            err_msg="${err_msg} Or path with action not exists"
+            exit_with_error "$err_msg"
+          fi
+
+          submodule_ref=""
+          if submodule_ref="$(git rev-parse ":${action_dir}")"; then
+            echo_info "'${action_dir}' is submodule on ref '$submodule_ref'"
+          fi
+          
+          uses_to_run="$action_dir"
+
+          if [ ! -f "${uses_to_run}/action.yml" ]; then
+            exit_with_error "'$action_dir' is not directory with action. '${uses_to_run}/action.yml' is not file or not found"
+          fi
+        else
+          exit_with_error "inputs.uses or inputs.action_dir should be passed"
+        fi
+
+        with_json_var=""
+        if ! with_json_var="$(yq -o json -I=0 . <<<"$with_input")"; then
+          exit_with_error "Cannot convert inputs.with to json"
+        fi
+
+        export TARGET_USES="$uses_str"
+        export TARGET_WITH="$with_json_var"
+
+        echo_debug "Uses to run: '$TARGET_USES'"
+        echo_debug "With JSON to run: '$TARGET_WITH'"
+
+        action_file="${full_dest}/action.yml"
+
+        if ! yq -o yaml -PM '.runs.steps[0].uses = env(TARGET_USES), .runs.steps[0].with = env(TARGET_WITH)' "$action_template_file" > "$action_file"; then
+          exit_with_error "Cannot prepare template of dynamic action with yq"
+        fi
+
+        if [ ! -f "$action_file" ]; then
+          exit_with_error "'$action_file' action file is not created"
+        fi
+
+        if [ ! -s "$action_file" ]; then
+          exit_with_error "'$action_file' action file is empty"
+        fi
+
+        echo_debug "Dynamic action yaml:"
+        echo_debug "cat $(action_file)"
+
+        echo "DEST_DIR=$full_dest" >> $GITHUB_OUTPUT
+    - name: Run
+      id: run
+      uses: *DEST_DIR_ANCHOR
+    - name: Cleanup
+      if: always()
+      env:
+        dest_dir: ${{ ${{ steps.setup.DEST_DIR }} }}
+      shell: bash
+      run: |
+        echo "Remove dynamic action dir '$dest_dir'"
+        [ -n "$dest_dir" ] && rm -rf "$dest_dir"
