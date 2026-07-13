@@ -1,6 +1,6 @@
 # action-dynamic-uses
 
-Uses another github action dynamically with ref to action or dir in repo.
+Uses another github action dynamically with ref to action or dir in repo
 
 ## Description
 
