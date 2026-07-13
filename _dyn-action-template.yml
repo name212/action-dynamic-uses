@@ -1,6 +1,6 @@
 outputs:
   outputs:
-    value: ${{ '${{ toJSON(steps.run_sub.outputs) }}' }}
+    value: '${{ toJSON(steps.run_sub.outputs) }}'
 runs:
   using: composite
   steps:
