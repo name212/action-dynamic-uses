@@ -2,9 +2,12 @@ name: 'Sub-dir action'
 description: 'Sub-dir action test'
 
 runs:
-  env:
-    action_dir: ${{ github.action_path }}
-  run: |
-    echo "Hello sub-dir action in ${action_dir}"
-    echo "Sub-dir content:"
-    cat "${action_dir}/file.txt"
+  composite: true
+  steps:
+  - name: "Print content"
+    env:
+      action_dir: ${{ github.action_path }}
+    run: |
+      echo "Hello sub-dir action in ${action_dir}"
+      echo "Sub-dir content:"
+      cat "${action_dir}/file.txt"
