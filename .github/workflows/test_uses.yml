@@ -25,10 +25,10 @@ jobs:
       - name: Uses second (yq docker)
         uses: ./
         id: yq_run
+        env:
+          REPLACE: "replaced"
         with:
           uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d
-          env:
-            REPLACE: "replaced"
           with: |
             cmd: echo '{"a": "b"}' | yq -o yaml -P '.a = env(REPLACE)'
       - name: Print yq version
