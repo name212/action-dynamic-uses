@@ -1,0 +1,10 @@
+outputs:
+  outputs:
+    value: '${{ toJSON(steps.run_sub.outputs) }}'
+runs:
+  using: composite
+  steps:
+  - name: Run dynamic sub-action
+    id: run_sub
+    uses: __USES_FOR_SUBSTITUTE__
+    with: {}
