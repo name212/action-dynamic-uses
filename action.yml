@@ -56,8 +56,7 @@ runs:
         }
 
         function echo_debug() {
-          local out="$(echo ${1:-} | sed ':a;N;$!ba;s/%/%25/g' | sed ':a;N;$!ba;s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
-          echo "::debug::${out}"
+          echo "::debug::${1:-}"
         }
 
         if [ -z "$uses_str" ]; then
@@ -95,7 +94,7 @@ runs:
 
         dir_uses_prefix="dir:"
 
-        uses_to_run=""
+        uses_to_run="$uses_str"
 
         if [[ "$uses_str" == ${dir_uses_prefix}* ]]; then
           echo_debug "Use uses action dir: '$uses_str'"
@@ -110,7 +109,7 @@ runs:
           fi
 
           submodule_ref=""
-          if submodule_ref="$(git rev-parse ":${action_dir}")"; then
+          if submodule_ref="$(git rev-parse ":${action_dir}" 2> /dev/null)"; then
             echo_info "'${action_dir}' is submodule on ref '$submodule_ref'"
           fi
           
