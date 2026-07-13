@@ -32,7 +32,7 @@ Action provides some debug logs. You can rerun-job with [debug logging](https://
 
 ## Dependencies
 
-Action uses `bash` and [jq](https://github.com/mikefarah/yq) utility for prepare template.
+Action uses `bash` and [yq](https://github.com/mikefarah/yq) utility for prepare template.
 
 All pre-defined Github runners contains `yq` by default.
 
@@ -45,14 +45,12 @@ All pre-defined Github runners contains `yq` by default.
   with:
     ##! if uses or action_dir were not passed. Action will fail 
     
-    # Action reference, e.g. `actions/setup-node@v3`. If not passed should pass `action_dir`
+    # Action reference or path, e.g. `actions/setup-node@v3`.
+    #  If has prefix `dir:` uses directory in repository.
+    #  If dir in submodule path you should check action with `submodules: "recursive"`
+    #  or pass `checkout_ref`.
     uses: ''
 
-    # Dir path to action in repo. If not passed should pass `uses`.
-    # If `action_dir` in submodule path you should check action with `submodules: "recursive"`
-    # or pass `checkout_ref`.
-    action_dir: ''
-    
     # Git reference to checkout. 
     # If passed, will checkout repo with `actions/checkout` with options
     #   fetch-depth: 0
@@ -89,25 +87,36 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Get setup go version
+        id: go_action
+        run: |
+          echo "version=6.4.0" >> $GITHUB_OUTPUT
       - name: Uses first (go)
-        uses: name212/action-dynamic-uses@v1
+        uses: ./
         with:
-          uses: actions/setup-go@v6.4.0
+          # You can use outputs for dynamically choice version or action  
+          uses: actions/setup-go@v${{ steps.go_action.outputs.version }}
           with: |
             go-version: '1.26.x'
       - name: Get go version
         run: go version
 
+      - name: Get setup yq version and key
+        id: yq_action
+        run: |
+          echo "sha=1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d" >> $GITHUB_OUTPUT
+          echo "key=a" >> $GITHUB_OUTPUT
       - name: Uses second (yq docker)
-        uses: name212/action-dynamic-uses@v1
+        uses: ./
         id: yq_run
         env:
           REPLACE: "replaced"
         with:
-          uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d
+          uses: mikefarah/yq@${{ steps.yq_action.outputs.sha }}
           with: |
             cmd: |
-              echo '{"a": "b"}' | yq -o yaml -P '.a = env(REPLACE)'
+              echo '{"${{ steps.yq_action.outputs.key }}": "b"}' | yq -o yaml -P '.${{ steps.yq_action.outputs.key }} = env(REPLACE)'
       - name: Print yq result
         env:
           # Extract output from yq action (yq action set output in .result key)
@@ -135,7 +144,9 @@ jobs:
       - name: Run sub-dir action
         uses: name212/action-dynamic-uses@v1
         with:
-          # you can checkout to ref 
+          # you can checkout to ref with this action
+          # it helpful if you action dir is submodule
+          # or not use checkout step in pipeline by hand
           checkout_ref: ${{ github.event.pull_request.head.sha }}
           uses: "dir:.sub-dir"
 
