@@ -43,7 +43,7 @@ runs:
         uses_str: ${{ inputs.uses }}
         action_dir: ${{ inputs.action_dir }}
         with_input: ${{ inputs.with }}
-        dest_dir: &DEST_DIR_ANCHOR ./.tmp-dynamic-action
+        dest_dir: ./.tmp-dynamic-action
         ref: ${{ inputs.checkout_ref }}
         this_action_dir: ${{ github.action_path }}
       run: |
@@ -149,7 +149,7 @@ runs:
         echo "DEST_DIR=$full_dest" >> $GITHUB_OUTPUT
     - name: Run
       id: run
-      uses: *DEST_DIR_ANCHOR
+      uses: ./.tmp-dynamic-action
     - name: Cleanup
       if: always()
       env:
