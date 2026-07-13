@@ -2,7 +2,7 @@ name: 'Sub-dir action'
 description: 'Sub-dir action test'
 
 runs:
-  composite: true
+  using: composite
   steps:
   - name: "Print content"
     shell: bash
