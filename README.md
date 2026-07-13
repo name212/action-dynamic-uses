@@ -63,3 +63,80 @@ All pre-defined Github runners contains `yq` by default.
     # by default uses empty object
     with: {}
 ```
+
+### Examples
+
+### Uses another action
+```yaml
+name: Pull request changes
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  uses_tests:
+    name: "Run uses test"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - &checkout_step
+        name: Checkout
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Uses first (go)
+        uses: name212/action-dynamic-uses@v1
+        with:
+          uses: actions/setup-go@v6.4.0
+          with: |
+            go-version: '1.26.x'
+      - name: Get go version
+        run: go version
+
+      - name: Uses second (yq docker)
+        uses: name212/action-dynamic-uses@v1
+        id: yq_run
+        env:
+          REPLACE: "replaced"
+        with:
+          uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d
+          with: |
+            cmd: |
+              echo '{"a": "b"}' | yq -o yaml -P '.a = env(REPLACE)'
+      - name: Print yq result
+        env:
+          # Extract output from yq action (yq action set output in .result key)
+          RESULT: ${{ fromJSON(steps.yq_run.outputs.outputs).result }}
+        run: echo "$RESULT"
+```
+
+### Uses sub-dir
+```yaml
+name: Pull request changes
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  dir_tests:
+    name: "Run action dir (no sub-module) test"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Run sub-dir action
+        uses: name212/action-dynamic-uses@v1
+        with:
+          # you can checkout to ref 
+          checkout_ref: ${{ github.event.pull_request.head.sha }}
+          uses: "dir:.sub-dir"
+
+```

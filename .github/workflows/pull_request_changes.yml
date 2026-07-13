@@ -20,24 +20,34 @@ jobs:
           fetch-depth: 0
           submodules: "recursive"
           ref: ${{ github.event.pull_request.head.sha }}
+      - name: Get setup go version
+        id: go_action
+        run: |
+          echo "version=6.4.0" >> $GITHUB_OUTPUT
       - name: Uses first (go)
         uses: ./
         with:
-          uses: actions/setup-go@v6.4.0
+          uses: actions/setup-go@v${{ steps.go_action.outputs.version }}
           with: |
             go-version: '1.26.x'
       - name: Get go version
         run: go version
+
+      - name: Get setup yq version and key
+        id: yq_action
+        run: |
+          echo "sha=1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d" >> $GITHUB_OUTPUT
+          echo "key=a" >> $GITHUB_OUTPUT
       - name: Uses second (yq docker)
         uses: ./
         id: yq_run
         env:
           REPLACE: "replaced"
         with:
-          uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d
+          uses: mikefarah/yq@${{ steps.yq_action.outputs.sha }}
           with: |
             cmd: |
-              echo '{"a": "b"}' | yq -o yaml -P '.a = env(REPLACE)'
+              echo '{"${{ steps.yq_action.outputs.key }}": "b"}' | yq -o yaml -P '.${{ steps.yq_action.outputs.key }} = env(REPLACE)'
       - name: Print yq result
         env:
           RESULT: ${{ fromJSON(steps.yq_run.outputs.outputs).result }}
