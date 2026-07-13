@@ -5,6 +5,7 @@ runs:
   composite: true
   steps:
   - name: "Print content"
+    shell: bash
     env:
       action_dir: ${{ github.action_path }}
     run: |

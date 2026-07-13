@@ -72,7 +72,7 @@ runs:
           exit_with_error "dest_dir env is empty"
         fi
 
-        action_template_file="${this_action_dir}/_dyn-action-template.yml"
+        action_template_file="${this_action_dir}/.dyn-action-template.yml"
         if [ ! -f "$action_template_file" ]; then
           exit_with_error "'$action_template_file' file with action template not found"
         fi
