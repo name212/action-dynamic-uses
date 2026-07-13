@@ -153,7 +153,7 @@ runs:
     - name: Cleanup
       if: always()
       env:
-        dest_dir: ${{ ${{ steps.setup.DEST_DIR }} }}
+        dest_dir: ${{ steps.setup.DEST_DIR }}
       shell: bash
       run: |
         echo "Remove dynamic action dir '$dest_dir'"
