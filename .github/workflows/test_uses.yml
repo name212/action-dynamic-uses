@@ -35,6 +35,7 @@ jobs:
         with:
           uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d
           with: |
-            cmd: echo '{"a": "b"}' | yq -o yaml -P '.a = env(REPLACE)'
+            cmd: |
+              echo '{"a": "b"}' | yq -o yaml -P '.a = env(REPLACE)'
       - name: Print yq version
         run: echo '${{ fromJSON(steps.yq_run.outputs.outputs).result }}'
