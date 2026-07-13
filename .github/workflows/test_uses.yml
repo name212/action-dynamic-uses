@@ -39,5 +39,5 @@ jobs:
               echo '{"a": "b"}' | yq -o yaml -P '.a = env(REPLACE)'
       - name: Print yq result
         env:
-          RESULT: ${{ steps.yq_run.outputs.outputs }}
+          RESULT: ${{ fromJSON(steps.yq_run.outputs.outputs).results }}
         run: echo "$RESULT"
