@@ -30,6 +30,7 @@ jobs:
           env:
             REPLACE: "replaced"
           with:
-            cmd: echo '{"a": "b"}' | yq -o yaml -P '.a = env(REPLACE)'
+            cmd: |
+              echo '{"a": "b"}' | yq -o yaml -P '.a = env(REPLACE)'
       - name: Print yq version
         run: echo '${{ fromJSON(steps.yq_run.outputs.outputs).result }}'
