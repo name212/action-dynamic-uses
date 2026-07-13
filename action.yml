@@ -109,11 +109,10 @@ runs:
             echo_info "'${action_dir}' is submodule on ref '$submodule_ref'"
           fi
           
-          uses_to_run="$action_dir"
-
-          if [ ! -f "${uses_to_run}/action.yml" ]; then
+          if [ ! -f "${action_dir}/action.yml" ]; then
             exit_with_error "'$action_dir' is not directory with action. '${uses_to_run}/action.yml' is not file or not found"
           fi
+          uses_to_run="./${action_dir}"
         else
           echo "::debug::Use uses directly: '$uses_to_run'"
         fi
