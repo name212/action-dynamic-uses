@@ -49,6 +49,7 @@ All pre-defined Github runners contains `yq` by default.
     #  If has prefix `dir:` uses directory in repository.
     #  If dir in submodule path you should check action with `submodules: "recursive"`
     #  or pass `checkout_ref`.
+    # Required
     uses: ''
 
     # Git reference to checkout. 
@@ -58,8 +59,8 @@ All pre-defined Github runners contains `yq` by default.
     checkout_ref: ''
 
     # YAML/JSON string of `inputs` for the running action action, e.g. `node-version: 18` or `{"node-version": "18"}`
-    # by default uses empty object
-    with: {}
+    # by default uses empty object string
+    with: '{}'
 ```
 
 ### Examples
