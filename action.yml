@@ -47,6 +47,8 @@ runs:
         ref: ${{ inputs.checkout_ref }}
         this_action_dir: ${{ github.action_path }}
       run: |
+        set -Eeuo pipefail
+
         function exit_with_error() {
           echo -e "\033[0;31mDynamically action failed:${1:-}\033[0m"
           exit 1
@@ -144,7 +146,7 @@ runs:
         fi
 
         echo_debug "Dynamic action yaml:"
-        echo_debug "cat $(action_file)"
+        echo_debug "$(cat "$action_file")"
 
         echo "DEST_DIR=$full_dest" >> $GITHUB_OUTPUT
     - name: Run
