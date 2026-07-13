@@ -24,7 +24,7 @@ inputs:
     default: "{}"
 outputs:
   outputs:
-    description: 'outputs from the action in json format'+
+    description: 'outputs from the action in json format'
     value: ${{ steps.run.outputs.outputs }}
 runs:
   using: composite
