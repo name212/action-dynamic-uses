@@ -96,15 +96,15 @@ runs:
         dir_uses_prefix="dir:"
 
         uses_to_run=""
-        
+
         if [[ "$uses_str" == ${dir_uses_prefix}* ]]; then
           echo_debug "Use uses action dir: '$uses_str'"
 
           action_dir="${uses_str#"$dir_uses_prefix"}"
 
-          if ! "$(realpath "$action_dir")"; then
-            err_msg="Cannot get real path for '$action_dir'. Probably you do not checkout to ref or not pass inputs.checkout_ref (value is '$ref')"
-            err_msg="${err_msg} Probably you do not checkout to ref or not pass inputs.checkout_ref (value is '$ref')"
+          if ! [ -d "$action_dir" ]; then
+            err_msg="Cannot get real path for '$action_dir'"
+            err_msg="${err_msg} Probably you do not checkout to ref or not pass inputs.checkout_ref (value is '$ref')."
             err_msg="${err_msg} Or path with action not exists"
             exit_with_error "$err_msg"
           fi
