@@ -56,6 +56,8 @@ runs:
           echo -e "\033[0;32mDynamically action: ${1:-}\033[0m"
         }
 
+        echo "::group::Setup dynamic action"
+
         if [ -z "$uses_str" ]; then
           exit_with_error "inputs.uses is empty"
         fi
@@ -118,8 +120,9 @@ runs:
             exit_with_error "'$action_dir' is not directory with action. '${uses_to_run}/action.yml' is not file or not found"
           fi
 
+          echo "::debug::Creates symlink for '$action_dir' to '$dir_action_dest'"
           if ! ln -s "$action_dir" "$dir_action_dest"; then
-            exit_with_error "cannot create sym link for action dir '$action_dir' to '$dir_action_dest'"
+            exit_with_error "cannot create symlink for action dir '$action_dir' to '$dir_action_dest'"
           fi
 
           submodule_ref=""
@@ -160,6 +163,8 @@ runs:
         echo "::debug::Dynamic action yaml:"
         echo "::debug::$(cat "$action_file")"
 
+        echo "::endgroup::"
+
         echo "DEST_DIR=$full_dest" >> $GITHUB_OUTPUT
     - name: Run
       id: run
@@ -171,11 +176,17 @@ runs:
         dir_action_dest: ./.tmp-dyn-action-as-dir
       shell: bash
       run: |
-        echo "Remove dynamic action dir '$dest_dir'"
-        [ -n "$dest_dir" ] && rm -rf "$dest_dir"
+        echo "::group::Cleanup dynamic action"
+
+        if [ -n "$dest_dir" ]; then
+          echo "Remove dynamic action dir '$dest_dir'"
+          rm -rf "$dest_dir"
+        fi
         if [ -n "$dir_action_dest" ]; then
           if [ -L "$dir_action_dest" ]; then
             echo "Remove symlink action dir '$dir_action_dest'"
             unlink "$dir_action_dest"
           fi
         fi
+        
+        echo "::endgroup::"
