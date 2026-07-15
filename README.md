@@ -82,8 +82,8 @@ Action provides some debug logs. For enable set env variable `DEBUG_DYN_ACTION_E
     ##! if uses or action_dir were not passed. Action will fail 
     
     # Action reference or path, e.g. `actions/setup-node@v3`.
-    #  If has prefix `dir:` creates symlink for passed dir in `./.tmp-dyn-action-as-dir`
-    #  and set `./.tmp-dyn-action-as-dir` as uses of action
+    #  If has prefix `dir:` creates symlink for passed dir in `./.tmp-dyn-action-as-dir-${SUFFIX}`
+    #  and set `./.tmp-dyn-action-as-dir-${SUFFIX}` as uses of action
     #  If dir in submodule path you should check action with `submodules: "recursive"`
     #  or pass `checkout_ref`.
     # Required
