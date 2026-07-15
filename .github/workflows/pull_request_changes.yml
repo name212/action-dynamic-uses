@@ -27,6 +27,8 @@ jobs:
           echo "version=6.4.0" >> $GITHUB_OUTPUT
       - name: Uses first (go)
         uses: ./
+        env:
+          RUNNER_DEBUG: "true"
         with:
           uses: actions/setup-go@v${{ steps.go_action.outputs.version }}
           with: |
@@ -43,6 +45,7 @@ jobs:
         uses: ./
         id: yq_run
         env:
+          RUNNER_DEBUG: "true"
           REPLACE: "replaced"
         with:
           uses: mikefarah/yq@${{ steps.yq_action.outputs.sha }}
@@ -63,6 +66,8 @@ jobs:
       - *checkout_step
       - name: Run sub-dir action
         uses: ./
+        env:
+          RUNNER_DEBUG: "true"
         with:
           uses: "dir:.sub-dir"
 
@@ -82,5 +87,7 @@ jobs:
           echo "full_path=$to_set" >> $GITHUB_OUTPUT
       - name: Run full-dir action
         uses: ./
+        env:
+          RUNNER_DEBUG: "true"
         with:
           uses: "dir:${{ steps.workspace_dir.outputs.full_path }}/.sub-dir"
