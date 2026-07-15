@@ -63,7 +63,7 @@ Action provides some debug logs. For enable set env variable `DEBUG_DYN_ACTION_E
 ```yaml
 ...
       - name: Run sub-dir action
-        uses: ./
+        uses: name212/action-dynamic-uses@v3
         env:
           DEBUG_DYN_ACTION_ENABLED: "true"
         with:
