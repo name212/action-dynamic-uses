@@ -30,7 +30,20 @@ will be removed for run multiple dynamic actions in one job.
 **WARNING!** If you use submodules for desired action, you should checkout to ref with `actions/checkout` action uses 
 `submodules: "recursive"` option for init submodules or pass `checkout_ref` input.
 
-Action provides some debug logs. You can rerun-job with [debug logging](https://github.blog/changelog/2022-05-24-github-actions-re-run-jobs-with-debug-logging/).
+
+### Debug logs
+
+Action provides some debug logs. For enable set env variable `DEBUG_DYN_ACTION_ENABLED` to `"true"`, like
+```yaml
+...
+      - name: Run sub-dir action
+        uses: ./
+        env:
+          DEBUG_DYN_ACTION_ENABLED: "true"
+        with:
+          uses: "dir:.sub-dir"
+...
+```
 
 ## Dependencies
 
@@ -44,6 +57,9 @@ All pre-defined Github runners contains `yq` by default.
 
 ```yaml
 - uses: name212/action-dynamic-uses@v3
+  # If you have enable debug logs set env `DEBUG_DYN_ACTION_ENABLED` to "true"
+  # env:
+  #   DEBUG_DYN_ACTION_ENABLED: "true"
   with:
     ##! if uses or action_dir were not passed. Action will fail 
     

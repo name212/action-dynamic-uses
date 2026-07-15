@@ -45,7 +45,7 @@ runs:
         ref: ${{ inputs.checkout_ref }}
         this_action_dir: ${{ github.action_path }}
       run: |
-        set -Eeuo pipefail
+        echo "::group::Setup dynamic action"
 
         function exit_with_error() {
           echo -e "\033[0;31mDynamically action failed:${1:-}\033[0m"
@@ -56,7 +56,11 @@ runs:
           echo -e "\033[0;32mDynamically action: ${1:-}\033[0m"
         }
 
-        echo "::group::Setup dynamic action"
+        function echo_debug() {
+          if [ "${DEBUG_DYN_ACTION_ENABLED:-}" == "true" ]; then
+            echo -e "\033[0;37mDynamically action: ${1:-}\033[0m"
+          fi
+        }
 
         if [ -z "$uses_str" ]; then
           exit_with_error "inputs.uses is empty"
@@ -66,10 +70,10 @@ runs:
           exit_with_error "yq is not installed. If you use self-hosted runner you should install yq"
         fi
 
-        echo "::debug::Use yq version"
-        echo "::debug::$(yq --version)"
+        echo_debug "Use yq version"
+        echo_debug "$(yq --version)"
 
-        echo "::debug::dest_dir: '$dest_dir'"
+        echo_debug "dest_dir: '$dest_dir'"
 
         if [ -z "$dest_dir" ]; then
           exit_with_error "dest_dir env is empty"
@@ -89,7 +93,7 @@ runs:
           exit_with_error "cannot get abs path for $dest_dir"
         fi
 
-        echo "::debug::full dest: '$full_dest'"
+        echo_debug "full dest: '$full_dest'"
 
         if ! mkdir -p "$full_dest"; then
           exit_with_error "cannot create dir $full_dest"
@@ -100,7 +104,7 @@ runs:
         uses_to_run="$uses_str"
 
         if [[ "$uses_str" == ${dir_uses_prefix}* ]]; then
-          echo "::debug::Use uses action dir: '$uses_str'"
+          echo_debug "Use uses action dir: '$uses_str'"
 
           action_dir="${uses_str#"$dir_uses_prefix"}"
 
@@ -120,7 +124,7 @@ runs:
             exit_with_error "'$action_dir' is not directory with action. '${uses_to_run}/action.yml' is not file or not found"
           fi
 
-          echo "::debug::Creates symlink for '$action_dir' to '$dir_action_dest'"
+          echo_debug "Creates symlink for '$action_dir' to '$dir_action_dest'"
           if ! ln -s "$action_dir" "$dir_action_dest"; then
             exit_with_error "cannot create symlink for action dir '$action_dir' to '$dir_action_dest'"
           fi
@@ -132,7 +136,7 @@ runs:
 
           uses_to_run="$dir_action_dest"
         else
-          echo "::debug::Use uses directly: '$uses_to_run'"
+          echo_debug "Use uses directly: '$uses_to_run'"
         fi
 
         with_json_var=""
@@ -143,8 +147,8 @@ runs:
         export TARGET_USES="$uses_to_run"
         export TARGET_WITH="$with_json_var"
 
-        echo "::debug::Uses to run: '$TARGET_USES'"
-        echo "::debug::With JSON to run: '$TARGET_WITH'"
+        echo_debug "Uses to run: '$TARGET_USES'"
+        echo_debug "With JSON to run: '$TARGET_WITH'"
 
         action_file="${full_dest}/action.yml"
 
@@ -160,8 +164,8 @@ runs:
           exit_with_error "'$action_file' action file is empty"
         fi
 
-        echo "::debug::Dynamic action yaml:"
-        echo "::debug::$(cat "$action_file")"
+        echo_debug "Dynamic action yaml:"
+        echo_debug "$(cat "$action_file")"
 
         echo "::endgroup::"
 
