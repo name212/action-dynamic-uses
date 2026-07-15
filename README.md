@@ -2,6 +2,15 @@
 
 Uses another github action dynamically with ref to action or dir in repo.
 
+
+## Dependencies
+
+Action uses `bash` and [yq](https://github.com/mikefarah/yq) utility for prepare template.
+
+All pre-defined Github runners contains `yq` by default.
+
+**If you are self-hosted runner you SHOULD install `yq` manually!**
+
 ## Description
 
 This action creates `./.tmp-dynamic-action/action.yml` with next [template](./_dyn-action-template.yml):
@@ -19,21 +28,38 @@ runs:
 ```
 
 - `.runs.steps[0].uses` will replaced with `yq` on passed `uses` or 
-  if `uses` is dir will create symlink for passed dir in `./.tmp-dyn-action-as-dir`.
-- `.runs.steps[0].with` will replaced with `yq` on passed `with`.
+  if `uses` is dir will create symlink for passed dir in `./.tmp-dyn-action-as-dir-${SUFFIX}`.
+
+  Suffix calculated as first 11 symbols of sha256 string `{uses}-{unix-timestamp with nano-seconds}`.
+  
+  It needs for two goals:
+  - user can pass full dir to action and action can be sibling action
+  - [recursive call](#recursive-calls) `action-dynamic-uses` with dirs.
+- `.runs.steps[0].with` will replaced as JSON-object with `yq` with passed `with`.
 
 Outputs of action will stored in `outputs.outputs` as `JSON-string`.
 
-After run, action `./.tmp-dynamic-action` directory and symlink `./.tmp-dyn-action-as-dir` 
+After run, action `./.tmp-dynamic-action` directory and symlink `./.tmp-dyn-action-as-dir-${SUFFIX}` 
 will be removed for run multiple dynamic actions in one job.
 
 **WARNING!** If you use submodules for desired action, you should checkout to ref with `actions/checkout` action uses 
 `submodules: "recursive"` option for init submodules or pass `checkout_ref` input.
 
+### Recursive calls  
+
+You can run `action-dynamic-uses` which call another `action-dynamic-uses` action.
+In this case deep `action-dynamic-uses` action run rewrite `./.tmp-dynamic-action/action.yml` file.
+It is possible because:
+- runner already read previous `./.tmp-dynamic-action/action.yml` file in our memory
+- for dir action we create symlink to to action dir with suffix with hash of `uses` string 
+  and unix-timestamp with nano-seconds.
+
+This case was tested in `dir_tests` and `full_dir_tests` [jobs](./.github/workflows/pull_request_changes.yml).
 
 ### Debug logs
 
-Action provides some debug logs. For enable set env variable `DEBUG_DYN_ACTION_ENABLED` to `"true"`, like
+Action provides some debug logs. For enable set env variable `DEBUG_DYN_ACTION_ENABLED` to `"true"`, like:
+
 ```yaml
 ...
       - name: Run sub-dir action
@@ -44,14 +70,6 @@ Action provides some debug logs. For enable set env variable `DEBUG_DYN_ACTION_E
           uses: "dir:.sub-dir"
 ...
 ```
-
-## Dependencies
-
-Action uses `bash` and [yq](https://github.com/mikefarah/yq) utility for prepare template.
-
-All pre-defined Github runners contains `yq` by default.
-
-**If you are self-hosted runner you SHOULD install `yq` manually!**
 
 ## Usage
 
