@@ -1,14 +1,16 @@
-name: 'Sub-dir action'
-description: 'Sub-dir action test'
+name: 'Sub-dir action with recursive run'
+description: 'Sub-dir action with recursive run'
 
 runs:
   using: composite
   steps:
-  - name: "Print content"
+  - name: Print action dir
     shell: bash
     env:
       action_dir: ${{ github.action_path }}
     run: |
-      echo "Hello sub-dir action in ${action_dir}"
-      echo "Sub-dir content:"
-      cat "${action_dir}/file.txt"
+      echo "Recursive action dir: '${action_dir}'"
+  - name: Run recursive action
+    uses: ./
+    with:
+      uses: "dir:${{ github.action_path }}/deep"

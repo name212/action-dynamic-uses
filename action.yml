@@ -35,13 +35,13 @@ runs:
         submodules: "recursive"
         ref: ${{ inputs.checkout_ref }}
     - name: Setup
-      id: setup
+      id: setup_dyn
       shell: bash
       env:
         uses_str: ${{ inputs.uses }}
         with_input: ${{ inputs.with }}
         dest_dir: ./.tmp-dynamic-action
-        dir_action_dest: ./.tmp-dyn-action-as-dir
+        dir_action_dest_prefix: ./.tmp-dyn-action-as-dir
         ref: ${{ inputs.checkout_ref }}
         this_action_dir: ${{ github.action_path }}
       run: |
@@ -79,8 +79,8 @@ runs:
           exit_with_error "dest_dir env is empty"
         fi
 
-        if [ -z "$dir_action_dest" ]; then
-          exit_with_error "dir_action_dest env is empty"
+        if [ -z "$dir_action_dest_prefix" ]; then
+          exit_with_error "dir_action_dest_prefix env is empty"
         fi
 
         action_template_file="${this_action_dir}/.dyn-action-template.yml"
@@ -102,7 +102,7 @@ runs:
         dir_uses_prefix="dir:"
 
         uses_to_run="$uses_str"
-
+        dir_action_dest=""
         if [[ "$uses_str" == ${dir_uses_prefix}* ]]; then
           echo_debug "Use uses action dir: '$uses_str'"
 
@@ -124,6 +124,9 @@ runs:
             exit_with_error "'$action_dir' is not directory with action. '${uses_to_run}/action.yml' is not file or not found"
           fi
 
+          dest_suffix="$(sha256sum - <<<"${uses_str}-$(date +"%s%6N")")"
+          dir_action_dest="${dir_action_dest_prefix}-${dest_suffix:0:11}"
+
           echo_debug "Creates symlink for '$action_dir' to '$dir_action_dest'"
           if ! ln -s "$action_dir" "$dir_action_dest"; then
             exit_with_error "cannot create symlink for action dir '$action_dir' to '$dir_action_dest'"
@@ -138,6 +141,8 @@ runs:
         else
           echo_debug "Use uses directly: '$uses_to_run'"
         fi
+
+        echo "SUB_DIR_LINK=$dir_action_dest" >> $GITHUB_OUTPUT
 
         with_json_var=""
         if ! with_json_var="$(yq -o json -I=0 . <<<"$with_input")"; then
@@ -177,7 +182,7 @@ runs:
       if: always()
       env:
         dest_dir: ./.tmp-dynamic-action
-        dir_action_dest: ./.tmp-dyn-action-as-dir
+        dir_action_link: ${{ steps.setup_dyn.outputs.SUB_DIR_LINK }}
       shell: bash
       run: |
         echo "::group::Cleanup dynamic action"
@@ -186,10 +191,11 @@ runs:
           echo "Remove dynamic action dir '$dest_dir'"
           rm -rf "$dest_dir"
         fi
-        if [ -n "$dir_action_dest" ]; then
-          if [ -L "$dir_action_dest" ]; then
-            echo "Remove symlink action dir '$dir_action_dest'"
-            unlink "$dir_action_dest"
+        echo "Got symlink action dir '$dir_action_link'"
+        if [ -n "$dir_action_link" ]; then
+          if [ -L "$dir_action_link" ]; then
+            echo "Remove symlink action dir '$dir_action_link'"
+            unlink "$dir_action_link"
           fi
         fi
         
