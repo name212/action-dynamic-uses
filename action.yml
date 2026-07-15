@@ -48,17 +48,17 @@ runs:
         echo "::group::Setup dynamic action"
 
         function exit_with_error() {
-          echo -e "\033[0;31mDynamically action failed:${1:-}\033[0m"
+          echo -e "\033[1;31mDynamically action failed: ${1:-}\033[0m"
           exit 1
         }
 
         function echo_info() {
-          echo -e "\033[0;32mDynamically action: ${1:-}\033[0m"
+          echo -e "\033[0;32m${1:-}\033[0m"
         }
 
         function echo_debug() {
           if [ "${DEBUG_DYN_ACTION_ENABLED:-}" == "true" ]; then
-            echo -e "\033[0;37mDynamically action: ${1:-}\033[0m"
+            echo -e "\033[0;34m${1:-}\033[0m"
           fi
         }
 
