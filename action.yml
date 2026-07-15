@@ -41,6 +41,7 @@ runs:
         uses_str: ${{ inputs.uses }}
         with_input: ${{ inputs.with }}
         dest_dir: ./.tmp-dynamic-action
+        dir_action_dest: ./.tmp-dyn-action-as-dir
         ref: ${{ inputs.checkout_ref }}
         this_action_dir: ${{ github.action_path }}
       run: |
@@ -72,6 +73,10 @@ runs:
           exit_with_error "dest_dir env is empty"
         fi
 
+        if [ -z "$dir_action_dest" ]; then
+          exit_with_error "dir_action_dest env is empty"
+        fi
+
         action_template_file="${this_action_dir}/.dyn-action-template.yml"
         if [ ! -f "$action_template_file" ]; then
           exit_with_error "'$action_template_file' file with action template not found"
@@ -97,29 +102,32 @@ runs:
 
           action_dir="${uses_str#"$dir_uses_prefix"}"
 
-          workflow_dir_prefix="${GITHUB_WORKSPACE}/"
+          err_msg="Cannot get real path or check is dir for '$action_dir'"
+          err_msg="${err_msg} Probably you do not checkout to ref or not pass inputs.checkout_ref (value is '$ref')."
+          err_msg="${err_msg} Or path with action not exists"
 
-          if [[ "$action_dir" == ${workflow_dir_prefix}* ]]; then
-            echo "::debug::Remove workflow dir '$workflow_dir_prefix' from action dir"
-            action_dir="./${action_dir#"$workflow_dir_prefix"}"
+          if ! action_dir="$(realpath "$action_dir")"; then
+            exit_with_error "$err_msg"
           fi
 
           if ! [ -d "$action_dir" ]; then
-            err_msg="Cannot get real path for '$action_dir'"
-            err_msg="${err_msg} Probably you do not checkout to ref or not pass inputs.checkout_ref (value is '$ref')."
-            err_msg="${err_msg} Or path with action not exists"
             exit_with_error "$err_msg"
+          fi
+
+          if [ ! -f "${action_dir}/action.yml" ]; then
+            exit_with_error "'$action_dir' is not directory with action. '${uses_to_run}/action.yml' is not file or not found"
+          fi
+
+          if ! ln -s "$action_dir" "$dir_action_dest"; then
+            exit_with_error "cannot create sym link for action dir '$action_dir' to '$dir_action_dest'"
           fi
 
           submodule_ref=""
           if submodule_ref="$(git rev-parse ":${action_dir}" 2> /dev/null)"; then
             echo_info "'${action_dir}' is submodule on ref '$submodule_ref'"
           fi
-          
-          if [ ! -f "${action_dir}/action.yml" ]; then
-            exit_with_error "'$action_dir' is not directory with action. '${uses_to_run}/action.yml' is not file or not found"
-          fi
-          uses_to_run="./${action_dir}"
+
+          uses_to_run="$dir_action_dest"
         else
           echo "::debug::Use uses directly: '$uses_to_run'"
         fi
@@ -160,7 +168,14 @@ runs:
       if: always()
       env:
         dest_dir: ./.tmp-dynamic-action
+        dir_action_dest: ./.tmp-dyn-action-as-dir
       shell: bash
       run: |
         echo "Remove dynamic action dir '$dest_dir'"
         [ -n "$dest_dir" ] && rm -rf "$dest_dir"
+        if [ -n "$dir_action_dest" ]; then
+          if [ -L "$dir_action_dest" ]; then
+            echo "Remove symlink action dir '$dir_action_dest'"
+            unlink "$dir_action_dest"
+          fi
+        fi

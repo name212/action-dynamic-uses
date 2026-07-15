@@ -18,12 +18,14 @@ runs:
     with: {}
 ```
 
-`.runs.steps[0].uses` will replaced with `yq` on passed `uses` or `action_dir`.
-`.runs.steps[0].with` will replaced with `yq` on passed `with`.
+- `.runs.steps[0].uses` will replaced with `yq` on passed `uses` or 
+  if `uses` is dir will create symlink for passed dir in `./.tmp-dyn-action-as-dir`.
+- `.runs.steps[0].with` will replaced with `yq` on passed `with`.
 
 Outputs of action will stored in `outputs.outputs` as `JSON-string`.
 
-After run action `./.tmp-dynamic-action` directory will be removed for run multiple dynamic actions in one job.
+After run, action `./.tmp-dynamic-action` directory and symlink `./.tmp-dyn-action-as-dir` 
+will be removed for run multiple dynamic actions in one job.
 
 **WARNING!** If you use submodules for desired action, you should checkout to ref with `actions/checkout` action uses 
 `submodules: "recursive"` option for init submodules or pass `checkout_ref` input.
@@ -46,7 +48,8 @@ All pre-defined Github runners contains `yq` by default.
     ##! if uses or action_dir were not passed. Action will fail 
     
     # Action reference or path, e.g. `actions/setup-node@v3`.
-    #  If has prefix `dir:` uses directory in repository.
+    #  If has prefix `dir:` creates symlink for passed dir in `./.tmp-dyn-action-as-dir`
+    #  and set `./.tmp-dyn-action-as-dir` as uses of action
     #  If dir in submodule path you should check action with `submodules: "recursive"`
     #  or pass `checkout_ref`.
     # Required
