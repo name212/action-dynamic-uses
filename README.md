@@ -41,7 +41,7 @@ All pre-defined Github runners contains `yq` by default.
 ## Usage
 
 ```yaml
-- uses: name212/action-dynamic-uses@v1
+- uses: name212/action-dynamic-uses@v3
   with:
     ##! if uses or action_dir were not passed. Action will fail 
     
@@ -143,7 +143,7 @@ jobs:
 
     steps:
       - name: Run sub-dir action
-        uses: name212/action-dynamic-uses@v1
+        uses: name212/action-dynamic-uses@v3
         with:
           # you can checkout to ref with this action
           # it helpful if you action dir is submodule

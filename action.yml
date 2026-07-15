@@ -97,6 +97,13 @@ runs:
 
           action_dir="${uses_str#"$dir_uses_prefix"}"
 
+          workflow_dir_prefix="${GITHUB_WORKSPACE}/"
+
+          if [[ "$action_dir" == ${workflow_dir_prefix}* ]]; then
+            echo "::debug::Remove workflow dir '$workflow_dir_prefix' from action dir"
+            action_dir="./${action_dir#"$workflow_dir_prefix"}"
+          fi
+
           if ! [ -d "$action_dir" ]; then
             err_msg="Cannot get real path for '$action_dir'"
             err_msg="${err_msg} Probably you do not checkout to ref or not pass inputs.checkout_ref (value is '$ref')."
