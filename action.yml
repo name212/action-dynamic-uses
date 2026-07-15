@@ -35,24 +35,31 @@ runs:
         submodules: "recursive"
         ref: ${{ inputs.checkout_ref }}
     - name: Setup
-      id: setup
+      id: setup_dyn
       shell: bash
       env:
         uses_str: ${{ inputs.uses }}
         with_input: ${{ inputs.with }}
         dest_dir: ./.tmp-dynamic-action
+        dir_action_dest_prefix: ./.tmp-dyn-action-as-dir
         ref: ${{ inputs.checkout_ref }}
         this_action_dir: ${{ github.action_path }}
       run: |
-        set -Eeuo pipefail
+        echo "::group::Setup dynamic action"
 
         function exit_with_error() {
-          echo -e "\033[0;31mDynamically action failed:${1:-}\033[0m"
+          echo -e "\033[1;31mDynamically action failed: ${1:-}\033[0m"
           exit 1
         }
 
         function echo_info() {
-          echo -e "\033[0;32mDynamically action: ${1:-}\033[0m"
+          echo -e "\033[0;32m${1:-}\033[0m"
+        }
+
+        function echo_debug() {
+          if [ "${DEBUG_DYN_ACTION_ENABLED:-}" == "true" ]; then
+            echo -e "\033[0;34m${1:-}\033[0m"
+          fi
         }
 
         if [ -z "$uses_str" ]; then
@@ -63,13 +70,17 @@ runs:
           exit_with_error "yq is not installed. If you use self-hosted runner you should install yq"
         fi
 
-        echo "::debug::Use yq version"
-        echo "::debug::$(yq --version)"
+        echo_debug "Use yq version"
+        echo_debug "$(yq --version)"
 
-        echo "::debug::dest_dir: '$dest_dir'"
+        echo_debug "dest_dir: '$dest_dir'"
 
         if [ -z "$dest_dir" ]; then
           exit_with_error "dest_dir env is empty"
+        fi
+
+        if [ -z "$dir_action_dest_prefix" ]; then
+          exit_with_error "dir_action_dest_prefix env is empty"
         fi
 
         action_template_file="${this_action_dir}/.dyn-action-template.yml"
@@ -82,7 +93,7 @@ runs:
           exit_with_error "cannot get abs path for $dest_dir"
         fi
 
-        echo "::debug::full dest: '$full_dest'"
+        echo_debug "full dest: '$full_dest'"
 
         if ! mkdir -p "$full_dest"; then
           exit_with_error "cannot create dir $full_dest"
@@ -91,31 +102,47 @@ runs:
         dir_uses_prefix="dir:"
 
         uses_to_run="$uses_str"
-
+        dir_action_dest=""
         if [[ "$uses_str" == ${dir_uses_prefix}* ]]; then
-          echo "::debug::Use uses action dir: '$uses_str'"
+          echo_debug "Use uses action dir: '$uses_str'"
 
           action_dir="${uses_str#"$dir_uses_prefix"}"
 
-          if ! [ -d "$action_dir" ]; then
-            err_msg="Cannot get real path for '$action_dir'"
-            err_msg="${err_msg} Probably you do not checkout to ref or not pass inputs.checkout_ref (value is '$ref')."
-            err_msg="${err_msg} Or path with action not exists"
+          err_msg="Cannot get real path or check is dir for '$action_dir'"
+          err_msg="${err_msg} Probably you do not checkout to ref or not pass inputs.checkout_ref (value is '$ref')."
+          err_msg="${err_msg} Or path with action not exists"
+
+          if ! action_dir="$(realpath "$action_dir")"; then
             exit_with_error "$err_msg"
+          fi
+
+          if ! [ -d "$action_dir" ]; then
+            exit_with_error "$err_msg"
+          fi
+
+          if [ ! -f "${action_dir}/action.yml" ]; then
+            exit_with_error "'$action_dir' is not directory with action. '${uses_to_run}/action.yml' is not file or not found"
+          fi
+
+          dest_suffix="$(sha256sum - <<<"${uses_str}-$(date +"%s%6N")")"
+          dir_action_dest="${dir_action_dest_prefix}-${dest_suffix:0:11}"
+
+          echo_debug "Creates symlink for '$action_dir' to '$dir_action_dest'"
+          if ! ln -s "$action_dir" "$dir_action_dest"; then
+            exit_with_error "cannot create symlink for action dir '$action_dir' to '$dir_action_dest'"
           fi
 
           submodule_ref=""
           if submodule_ref="$(git rev-parse ":${action_dir}" 2> /dev/null)"; then
             echo_info "'${action_dir}' is submodule on ref '$submodule_ref'"
           fi
-          
-          if [ ! -f "${action_dir}/action.yml" ]; then
-            exit_with_error "'$action_dir' is not directory with action. '${uses_to_run}/action.yml' is not file or not found"
-          fi
-          uses_to_run="./${action_dir}"
+
+          uses_to_run="$dir_action_dest"
         else
-          echo "::debug::Use uses directly: '$uses_to_run'"
+          echo_debug "Use uses directly: '$uses_to_run'"
         fi
+
+        echo "SUB_DIR_LINK=$dir_action_dest" >> $GITHUB_OUTPUT
 
         with_json_var=""
         if ! with_json_var="$(yq -o json -I=0 . <<<"$with_input")"; then
@@ -125,8 +152,8 @@ runs:
         export TARGET_USES="$uses_to_run"
         export TARGET_WITH="$with_json_var"
 
-        echo "::debug::Uses to run: '$TARGET_USES'"
-        echo "::debug::With JSON to run: '$TARGET_WITH'"
+        echo_debug "Uses to run: '$TARGET_USES'"
+        echo_debug "With JSON to run: '$TARGET_WITH'"
 
         action_file="${full_dest}/action.yml"
 
@@ -142,8 +169,10 @@ runs:
           exit_with_error "'$action_file' action file is empty"
         fi
 
-        echo "::debug::Dynamic action yaml:"
-        echo "::debug::$(cat "$action_file")"
+        echo_debug "Dynamic action yaml:"
+        echo_debug "$(cat "$action_file")"
+
+        echo "::endgroup::"
 
         echo "DEST_DIR=$full_dest" >> $GITHUB_OUTPUT
     - name: Run
@@ -153,7 +182,21 @@ runs:
       if: always()
       env:
         dest_dir: ./.tmp-dynamic-action
+        dir_action_link: ${{ steps.setup_dyn.outputs.SUB_DIR_LINK }}
       shell: bash
       run: |
-        echo "Remove dynamic action dir '$dest_dir'"
-        [ -n "$dest_dir" ] && rm -rf "$dest_dir"
+        echo "::group::Cleanup dynamic action"
+
+        if [ -n "$dest_dir" ]; then
+          echo "Remove dynamic action dir '$dest_dir'"
+          rm -rf "$dest_dir"
+        fi
+        echo "Got symlink action dir '$dir_action_link'"
+        if [ -n "$dir_action_link" ]; then
+          if [ -L "$dir_action_link" ]; then
+            echo "Remove symlink action dir '$dir_action_link'"
+            unlink "$dir_action_link"
+          fi
+        fi
+        
+        echo "::endgroup::"

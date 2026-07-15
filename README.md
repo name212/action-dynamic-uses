@@ -2,6 +2,15 @@
 
 Uses another github action dynamically with ref to action or dir in repo.
 
+
+## Dependencies
+
+Action uses `bash` and [yq](https://github.com/mikefarah/yq) utility for prepare template.
+
+All pre-defined Github runners contains `yq` by default.
+
+**If you are self-hosted runner you SHOULD install `yq` manually!**
+
 ## Description
 
 This action creates `./.tmp-dynamic-action/action.yml` with next [template](./_dyn-action-template.yml):
@@ -18,35 +27,63 @@ runs:
     with: {}
 ```
 
-`.runs.steps[0].uses` will replaced with `yq` on passed `uses` or `action_dir`.
-`.runs.steps[0].with` will replaced with `yq` on passed `with`.
+- `.runs.steps[0].uses` will replaced with `yq` on passed `uses` or 
+  if `uses` is dir will create symlink for passed dir in `./.tmp-dyn-action-as-dir-${SUFFIX}`.
+
+  Suffix calculated as first 11 symbols of sha256 string `{uses}-{unix-timestamp with nano-seconds}`.
+  
+  It needs for two goals:
+  - user can pass full dir to action and action can be sibling action
+  - [recursive call](#recursive-calls) `action-dynamic-uses` with dirs.
+- `.runs.steps[0].with` will replaced as JSON-object with `yq` with passed `with`.
 
 Outputs of action will stored in `outputs.outputs` as `JSON-string`.
 
-After run action `./.tmp-dynamic-action` directory will be removed for run multiple dynamic actions in one job.
+After run, action `./.tmp-dynamic-action` directory and symlink `./.tmp-dyn-action-as-dir-${SUFFIX}` 
+will be removed for run multiple dynamic actions in one job.
 
 **WARNING!** If you use submodules for desired action, you should checkout to ref with `actions/checkout` action uses 
 `submodules: "recursive"` option for init submodules or pass `checkout_ref` input.
 
-Action provides some debug logs. You can rerun-job with [debug logging](https://github.blog/changelog/2022-05-24-github-actions-re-run-jobs-with-debug-logging/).
+### Recursive calls  
 
-## Dependencies
+You can run `action-dynamic-uses` which call another `action-dynamic-uses` action.
+In this case deep `action-dynamic-uses` action run rewrite `./.tmp-dynamic-action/action.yml` file.
+It is possible because:
+- runner already read previous `./.tmp-dynamic-action/action.yml` file in our memory
+- for dir action we create symlink to to action dir with suffix with hash of `uses` string 
+  and unix-timestamp with nano-seconds.
 
-Action uses `bash` and [yq](https://github.com/mikefarah/yq) utility for prepare template.
+This case was tested in `dir_tests` and `full_dir_tests` [jobs](./.github/workflows/pull_request_changes.yml).
 
-All pre-defined Github runners contains `yq` by default.
+### Debug logs
 
-**If you are self-hosted runner you SHOULD install `yq` manually!**
+Action provides some debug logs. For enable set env variable `DEBUG_DYN_ACTION_ENABLED` to `"true"`, like:
+
+```yaml
+...
+      - name: Run sub-dir action
+        uses: name212/action-dynamic-uses@v3
+        env:
+          DEBUG_DYN_ACTION_ENABLED: "true"
+        with:
+          uses: "dir:.sub-dir"
+...
+```
 
 ## Usage
 
 ```yaml
-- uses: name212/action-dynamic-uses@v1
+- uses: name212/action-dynamic-uses@v3
+  # If you have enable debug logs set env `DEBUG_DYN_ACTION_ENABLED` to "true"
+  # env:
+  #   DEBUG_DYN_ACTION_ENABLED: "true"
   with:
     ##! if uses or action_dir were not passed. Action will fail 
     
     # Action reference or path, e.g. `actions/setup-node@v3`.
-    #  If has prefix `dir:` uses directory in repository.
+    #  If has prefix `dir:` creates symlink for passed dir in `./.tmp-dyn-action-as-dir-${SUFFIX}`
+    #  and set `./.tmp-dyn-action-as-dir-${SUFFIX}` as uses of action
     #  If dir in submodule path you should check action with `submodules: "recursive"`
     #  or pass `checkout_ref`.
     # Required
@@ -94,7 +131,7 @@ jobs:
         run: |
           echo "version=6.4.0" >> $GITHUB_OUTPUT
       - name: Uses first (go)
-        uses: ./
+        uses: name212/action-dynamic-uses@v3
         with:
           # You can use outputs for dynamically choice version or action  
           uses: actions/setup-go@v${{ steps.go_action.outputs.version }}
@@ -109,7 +146,7 @@ jobs:
           echo "sha=1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d" >> $GITHUB_OUTPUT
           echo "key=a" >> $GITHUB_OUTPUT
       - name: Uses second (yq docker)
-        uses: ./
+        uses: name212/action-dynamic-uses@v3
         id: yq_run
         env:
           REPLACE: "replaced"
@@ -143,7 +180,7 @@ jobs:
 
     steps:
       - name: Run sub-dir action
-        uses: name212/action-dynamic-uses@v1
+        uses: name212/action-dynamic-uses@v3
         with:
           # you can checkout to ref with this action
           # it helpful if you action dir is submodule

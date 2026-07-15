@@ -1,0 +1,14 @@
+name: 'Target sub-dir action'
+description: 'Target sub-dir action test'
+
+runs:
+  using: composite
+  steps:
+  - name: "Print content"
+    shell: bash
+    env:
+      action_dir: ${{ github.action_path }}
+    run: |
+      echo "Hello sub-dir action in ${action_dir}"
+      echo "Sub-dir content:"
+      cat "${action_dir}/file.txt"

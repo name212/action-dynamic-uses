@@ -6,6 +6,9 @@ on:
       - synchronize
       - reopened
 
+env:
+  DEBUG_DYN_ACTION_ENABLED: 'true'
+
 jobs:
   uses_tests:
     name: "Run uses test"
@@ -61,7 +64,26 @@ jobs:
 
     steps:
       - *checkout_step
-      - name: as_subdir
+      - name: Run sub-dir action
         uses: ./
         with:
           uses: "dir:.sub-dir"
+
+  full_dir_tests:
+    name: "Run action dir (as full dir) test"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - *checkout_step
+      - name: Set workspace dir output
+        id: workspace_dir
+        run: | 
+          to_set="$(realpath "$GITHUB_WORKSPACE")"
+          echo "Workspace dir: $GITHUB_WORKSPACE"
+          echo "Workspace real path: $to_set"
+          echo "full_path=$to_set" >> $GITHUB_OUTPUT
+      - name: Run full-dir action
+        uses: ./
+        with:
+          uses: "dir:${{ steps.workspace_dir.outputs.full_path }}/.sub-dir"
