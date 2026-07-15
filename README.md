@@ -131,7 +131,7 @@ jobs:
         run: |
           echo "version=6.4.0" >> $GITHUB_OUTPUT
       - name: Uses first (go)
-        uses: ./
+        uses: name212/action-dynamic-uses@v3
         with:
           # You can use outputs for dynamically choice version or action  
           uses: actions/setup-go@v${{ steps.go_action.outputs.version }}
@@ -146,7 +146,7 @@ jobs:
           echo "sha=1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d" >> $GITHUB_OUTPUT
           echo "key=a" >> $GITHUB_OUTPUT
       - name: Uses second (yq docker)
-        uses: ./
+        uses: name212/action-dynamic-uses@v3
         id: yq_run
         env:
           REPLACE: "replaced"
